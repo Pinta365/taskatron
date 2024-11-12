@@ -1,0 +1,16 @@
+{
+  "version": "4",
+  "specifiers": {
+    "jsr:@hexagon/croner@9": "9.0.0"
+  },
+  "jsr": {
+    "@hexagon/croner@9.0.0": {
+      "integrity": "15713563b07001cdb8a2096d9e2bc866382848f8d29fdc15d7b16dc95d17b620"
+    }
+  },
+  "workspace": {
+    "dependencies": [
+      "jsr:@hexagon/croner@9"
+    ]
+  }
+}
