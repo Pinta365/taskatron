@@ -16,5 +16,5 @@ export abstract class Task<TParams = Record<string | number | symbol, never>> {
         this.triggers = triggers;
     }
 
-    abstract execute(scheduler?: Scheduler): Promise<Partial<TaskResult>>;
+    abstract execute(scheduler?: Scheduler): Promise<Partial<TaskResult>> | Partial<TaskResult>;
 }

@@ -1,16 +1,21 @@
 {
   "version": "4",
   "specifiers": {
-    "jsr:@hexagon/croner@9": "9.0.0"
+    "jsr:@hexagon/croner@9": "9.0.0",
+    "jsr:@hono/hono@^4.6.10": "4.6.10"
   },
   "jsr": {
     "@hexagon/croner@9.0.0": {
       "integrity": "15713563b07001cdb8a2096d9e2bc866382848f8d29fdc15d7b16dc95d17b620"
+    },
+    "@hono/hono@4.6.10": {
+      "integrity": "dae93ac8bb49881f99506aa8e01e5536d5d72cc3c2b556bde2816fdf25ca609c"
     }
   },
   "workspace": {
     "dependencies": [
-      "jsr:@hexagon/croner@9"
+      "jsr:@hexagon/croner@9",
+      "jsr:@hono/hono@^4.6.10"
     ]
   }
 }

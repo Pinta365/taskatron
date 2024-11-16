@@ -2,8 +2,21 @@
 import type { LogEntry, TaskRun } from "./types.ts";
 import { LogType, Status } from "./types.ts";
 
-export class Database {
-    // in-memory database for dev
+export interface TaskatronDatabase {
+    getTaskStatus(taskId: string): Status;
+    getAllTaskLogs(taskId: string, options?: { startTime?: number }): TaskRun[];
+    getLastTaskLog(taskId: string, options?: { startTime?: number }): TaskRun | undefined;
+    updateTaskStatus(
+        taskId: string,
+        status: Status,
+        logMessage?: string,
+        logType?: LogType,
+    ): void;
+    addTaskLog(taskId: string, type: LogType, message: string): void;
+    printAllTasks(): void;
+}
+// in-memory database for dev
+export class InMemoryDatabase implements TaskatronDatabase {
     private tasks: Map<string, { status: Status; runs: TaskRun[] }> = new Map();
 
     constructor() {
@@ -12,6 +25,42 @@ export class Database {
     getTaskStatus(taskId: string): Status {
         const taskData = this.tasks.get(taskId);
         return taskData ? taskData.status : Status.IDLE;
+    }
+
+    getAllTaskLogs(taskId: string, options?: { startTime?: number }): TaskRun[] {
+        const { startTime } = options || {};
+        const taskData = this.tasks.get(taskId);
+
+        if (taskData) {
+            let runs = taskData.runs;
+
+            if (startTime) {
+                runs = runs.filter((run) => run.startTime >= startTime);
+            }
+
+            return runs;
+        } else {
+            console.warn(`Task ${taskId} not found.`);
+            return [];
+        }
+    }
+
+    getLastTaskLog(taskId: string, options?: { startTime?: number }): TaskRun | undefined {
+        const { startTime } = options || {};
+        const taskData = this.tasks.get(taskId);
+
+        if (taskData) {
+            let runs = taskData.runs;
+
+            if (startTime) {
+                runs = runs.filter((run) => run.startTime >= startTime);
+            }
+
+            return runs[runs.length - 1];
+        } else {
+            console.warn(`Task ${taskId} not found.`);
+            return undefined;
+        }
     }
 
     updateTaskStatus(

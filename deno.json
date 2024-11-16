@@ -10,6 +10,7 @@
         "indentWidth": 4
     },
     "imports": {
-        "@hexagon/croner": "jsr:@hexagon/croner@^9.0.0"
+        "@hexagon/croner": "jsr:@hexagon/croner@^9.0.0",
+        "@hono/hono": "jsr:@hono/hono@^4.6.10"
     }
 }

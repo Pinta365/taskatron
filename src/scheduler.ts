@@ -1,16 +1,33 @@
 //.src/scheduler.ts
-import { Database } from "./database.ts";
-import { LogType, Status } from "./types.ts";
+import { InMemoryDatabase, type TaskatronDatabase } from "./database.ts";
+import { createApiServer } from "../api/server.ts";
+import { LogType, Status, type TaskRun } from "./types.ts";
 import type { Task } from "./task.ts";
 import { Cron } from "@hexagon/croner";
 
 export class Scheduler {
     private tasks: Map<string, Task<unknown>> = new Map();
     private cronTasks: Map<string, Cron> = new Map();
-    private database: Database;
+    private database: TaskatronDatabase;
 
     constructor() {
-        this.database = new Database();
+        this.database = new InMemoryDatabase();
+    }
+
+    startApiServer(options: { port?: number } = {}) {
+        const { port = 8000 } = options;
+
+        const app = createApiServer(this);
+        Deno.serve({ port: port }, app.fetch);
+        console.log(`API server started on port ${port}`);
+    }
+
+    getTasks(): Task<unknown>[] {
+        return Array.from(this.tasks.values());
+    }
+
+    getTask(taskId: string): Task<unknown> | undefined {
+        return this.tasks.get(taskId);
     }
 
     registerTask(taskOrTasks: Task<unknown>[] | Task<unknown>) {
@@ -52,7 +69,7 @@ export class Scheduler {
         }
     }
 
-    activateTask(task: Task<unknown>) {
+    startTask(task: Task<unknown>) {
         const taskId = task.id;
         try {
             if (!this.tasks.has(taskId)) {
@@ -60,7 +77,7 @@ export class Scheduler {
             }
             this.executeTask(task);
         } catch (error) {
-            console.error(`Error activating task ${taskId}:`, error);
+            console.error(`Error starting task ${taskId}:`, error);
         }
     }
 
@@ -96,17 +113,25 @@ export class Scheduler {
 
             if (taskIsSuccessful && task?.triggers) {
                 for (const triggeredTask of task.triggers) {
-                    this.activateTask(triggeredTask);
+                    this.startTask(triggeredTask);
                 }
             }
         }
     }
 
     addTaskLog(taskId: string, type: LogType, message: string) {
-        this.database.addTaskLog(taskId, type, message);
+        return this.database.addTaskLog(taskId, type, message);
+    }
+
+    getAllTaskLogs(taskId: string, options?: { startTime?: number }): TaskRun[] {
+        return this.database.getAllTaskLogs(taskId, options);
+    }
+
+    getLastTaskLog(taskId: string, options?: { startTime?: number }): TaskRun | undefined {
+        return this.database.getLastTaskLog(taskId, options);
     }
 
     printAllTasks() {
-        this.database.printAllTasks();
+        return this.database.printAllTasks();
     }
 }

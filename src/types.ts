@@ -8,6 +8,7 @@ export enum Status {
     FAILED = "failed",
     UNKNOWN = "unknown",
 }
+
 export enum LogType {
     SYSTEM = "system",
     INFO = "info",
@@ -15,6 +16,7 @@ export enum LogType {
     DEBUG = "debug",
     ERROR = "error",
 }
+
 export interface LogEntry {
     type: LogType;
     timestamp: number;
