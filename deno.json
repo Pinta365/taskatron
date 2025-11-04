@@ -2,15 +2,11 @@
     "name": "@pinta365/taskatron",
     "version": "0.0.1",
     "exports": "./mod.ts",
-    "tasks": {
-        "publish-dry": "deno publish --dry-run"
-    },
     "fmt": {
         "lineWidth": 150,
         "indentWidth": 4
     },
     "imports": {
-        "@hexagon/croner": "jsr:@hexagon/croner@^9.0.0",
-        "@hono/hono": "jsr:@hono/hono@^4.6.10"
+        "@hexagon/croner": "jsr:@hexagon/croner@^9.0.0"
     }
 }

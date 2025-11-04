@@ -1,6 +1,5 @@
 //.src/scheduler.ts
 import { InMemoryDatabase, type TaskatronDatabase } from "./database.ts";
-import { createApiServer } from "../api/server.ts";
 import { LogType, Status, type TaskRun } from "./types.ts";
 import type { Task } from "./task.ts";
 import { Cron } from "@hexagon/croner";
@@ -12,14 +11,6 @@ export class Scheduler {
 
     constructor() {
         this.database = new InMemoryDatabase();
-    }
-
-    startApiServer(options: { port?: number } = {}) {
-        const { port = 8000 } = options;
-
-        const app = createApiServer(this);
-        Deno.serve({ port: port }, app.fetch);
-        console.log(`API server started on port ${port}`);
     }
 
     getTasks(): Task<unknown>[] {
@@ -60,6 +51,27 @@ export class Scheduler {
     }
 
     stopTask(taskId: string) {
+        // Only pause the schedule, do not remove it
+        const cronTask = this.cronTasks.get(taskId);
+        if (cronTask) {
+            cronTask.stop();
+        } else {
+            console.warn(`Task with ID "${taskId}" not found or not scheduled.`);
+        }
+    }
+
+    resumeTask(taskId: string) {
+        // Resume the schedule if it exists
+        const cronTask = this.cronTasks.get(taskId);
+        if (cronTask) {
+            cronTask.resume();
+        } else {
+            console.warn(`Task with ID "${taskId}" not found or not scheduled.`);
+        }
+    }
+
+    unscheduleTask(taskId: string) {
+        // Stop and remove the schedule entirely
         const cronTask = this.cronTasks.get(taskId);
         if (cronTask) {
             cronTask.stop();
