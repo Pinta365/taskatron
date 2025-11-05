@@ -1,6 +1,6 @@
 {
     "name": "@pinta365/taskatron",
-    "version": "0.0.1",
+    "version": "0.0.3",
     "exports": "./mod.ts",
     "fmt": {
         "lineWidth": 150,
@@ -8,5 +8,8 @@
     },
     "imports": {
         "@hexagon/croner": "jsr:@hexagon/croner@^9.0.0"
+    },
+    "publish": {
+        "exclude": ["examples"]
     }
 }

@@ -141,7 +141,7 @@ export class Scheduler {
         }
     }
 
-    addTaskLog(taskId: string, type: LogType, message: string) {
+    addTaskLog(taskId: string, type: LogType, message: string): void {
         return this.database.addTaskLog(taskId, type, message);
     }
 
@@ -153,11 +153,11 @@ export class Scheduler {
         return this.database.getLastTaskLog(taskId, options);
     }
 
-    printAllTasks() {
+    printAllTasks(): void {
         return this.database.printAllTasks();
     }
 
-    setData(key: string, value: unknown) {
+    setData(key: string, value: unknown): void {
         return this.database.setData(key, value);
     }
 
