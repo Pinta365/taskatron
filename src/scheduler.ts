@@ -1,16 +1,26 @@
 //.src/scheduler.ts
-import { InMemoryDatabase, type TaskatronDatabase } from "./database.ts";
+import { BaseDatabase, InMemoryDatabase } from "./database.ts";
+import type { DatabaseStorage, TaskatronDatabase } from "./database.ts";
 import { LogType, Status, type TaskRun } from "./types.ts";
 import type { Task } from "./task.ts";
 import { Cron } from "@hexagon/croner";
+
+class DatabaseFromStorage extends BaseDatabase {
+    protected storage: DatabaseStorage;
+
+    constructor(storage: DatabaseStorage) {
+        super();
+        this.storage = storage;
+    }
+}
 
 export class Scheduler {
     private tasks: Map<string, Task<unknown>> = new Map();
     private cronTasks: Map<string, Cron> = new Map();
     private database: TaskatronDatabase;
 
-    constructor() {
-        this.database = new InMemoryDatabase();
+    constructor(storage?: DatabaseStorage) {
+        this.database = storage ? new DatabaseFromStorage(storage) : new InMemoryDatabase();
     }
 
     getTasks(): Task<unknown>[] {
@@ -81,13 +91,13 @@ export class Scheduler {
         }
     }
 
-    startTask(task: Task<unknown>) {
+    async startTask(task: Task<unknown>) {
         const taskId = task.id;
         try {
             if (!this.tasks.has(taskId)) {
                 throw new Error(`Task with ID "${taskId}" not found.`);
             }
-            this.executeTask(task);
+            await this.executeTask(task);
         } catch (error) {
             console.error(`Error starting task ${taskId}:`, error);
         }
@@ -145,5 +155,13 @@ export class Scheduler {
 
     printAllTasks() {
         return this.database.printAllTasks();
+    }
+
+    setData(key: string, value: unknown) {
+        return this.database.setData(key, value);
+    }
+
+    getData<T = unknown>(key: string): T | undefined {
+        return this.database.getData<T>(key);
     }
 }

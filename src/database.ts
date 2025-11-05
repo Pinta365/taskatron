@@ -2,6 +2,18 @@
 import type { LogEntry, TaskRun } from "./types.ts";
 import { LogType, Status } from "./types.ts";
 
+export interface TaskData {
+    status: Status;
+    runs: TaskRun[];
+}
+
+export interface DatabaseStorage {
+    getTaskData(taskId: string): TaskData | undefined;
+    setTaskData(taskId: string, data: TaskData): void;
+    getData<T = unknown>(key: string): T | undefined;
+    setData(key: string, value: unknown): void;
+}
+
 export interface TaskatronDatabase {
     getTaskStatus(taskId: string): Status;
     getAllTaskLogs(taskId: string, options?: { startTime?: number }): TaskRun[];
@@ -14,30 +26,27 @@ export interface TaskatronDatabase {
     ): void;
     addTaskLog(taskId: string, type: LogType, message: string): void;
     printAllTasks(): void;
+    setData(key: string, value: unknown): void;
+    getData<T = unknown>(key: string): T | undefined;
 }
-// in-memory database for dev
-export class InMemoryDatabase implements TaskatronDatabase {
-    private tasks: Map<string, { status: Status; runs: TaskRun[] }> = new Map();
 
-    constructor() {
-    }
+export abstract class BaseDatabase implements TaskatronDatabase {
+    protected abstract storage: DatabaseStorage;
 
     getTaskStatus(taskId: string): Status {
-        const taskData = this.tasks.get(taskId);
+        const taskData = this.storage.getTaskData(taskId);
         return taskData ? taskData.status : Status.IDLE;
     }
 
     getAllTaskLogs(taskId: string, options?: { startTime?: number }): TaskRun[] {
         const { startTime } = options || {};
-        const taskData = this.tasks.get(taskId);
+        const taskData = this.storage.getTaskData(taskId);
 
         if (taskData) {
             let runs = taskData.runs;
-
             if (startTime) {
                 runs = runs.filter((run) => run.startTime >= startTime);
             }
-
             return runs;
         } else {
             console.warn(`Task ${taskId} not found.`);
@@ -46,21 +55,8 @@ export class InMemoryDatabase implements TaskatronDatabase {
     }
 
     getLastTaskLog(taskId: string, options?: { startTime?: number }): TaskRun | undefined {
-        const { startTime } = options || {};
-        const taskData = this.tasks.get(taskId);
-
-        if (taskData) {
-            let runs = taskData.runs;
-
-            if (startTime) {
-                runs = runs.filter((run) => run.startTime >= startTime);
-            }
-
-            return runs[runs.length - 1];
-        } else {
-            console.warn(`Task ${taskId} not found.`);
-            return undefined;
-        }
+        const runs = this.getAllTaskLogs(taskId, options);
+        return runs[runs.length - 1];
     }
 
     updateTaskStatus(
@@ -68,11 +64,10 @@ export class InMemoryDatabase implements TaskatronDatabase {
         status: Status,
         logMessage?: string,
         logType: LogType = LogType.SYSTEM,
-    ) {
-        let taskData = this.tasks.get(taskId);
+    ): void {
+        let taskData = this.storage.getTaskData(taskId);
         if (!taskData) {
             taskData = { status: Status.IDLE, runs: [] };
-            this.tasks.set(taskId, taskData);
         }
 
         let currentRun = taskData.runs[taskData.runs.length - 1];
@@ -106,32 +101,11 @@ export class InMemoryDatabase implements TaskatronDatabase {
         }
 
         taskData.status = status;
+        this.storage.setTaskData(taskId, taskData);
     }
 
-    printAllTasks() {
-        console.log("Current Database State:");
-        for (const [taskId, taskData] of this.tasks) {
-            console.log(`  Task ID: ${taskId}`);
-            console.log(`    Status: ${taskData.status}`);
-            console.log("    Runs:");
-            for (const [index, run] of taskData.runs.entries()) {
-                console.log(`      Run ${index + 1}: ${run.id}`);
-                console.log(`        Start Time: ${new Date(run.startTime).toISOString()}`);
-                if (run.endTime) {
-                    console.log(`        End Time: ${new Date(run.endTime).toISOString()}`);
-                }
-                console.log("        Logs:");
-                for (const log of run.taskLog) {
-                    console.log(
-                        `          - ${new Date(log.timestamp).toISOString()} [${log.type}]: ${log.message}`,
-                    );
-                }
-            }
-        }
-    }
-
-    addTaskLog(taskId: string, type: LogType, message: string) {
-        const taskData = this.tasks.get(taskId);
+    addTaskLog(taskId: string, type: LogType, message: string): void {
+        const taskData = this.storage.getTaskData(taskId);
         if (taskData) {
             const currentRun = taskData.runs[taskData.runs.length - 1];
             if (currentRun) {
@@ -141,13 +115,87 @@ export class InMemoryDatabase implements TaskatronDatabase {
                     message,
                 };
                 currentRun.taskLog.push(newLog);
+                this.storage.setTaskData(taskId, taskData);
             } else {
-                console.warn(
-                    `No active run found for task ${taskId}. Log message will not be added.`,
-                );
+                console.warn(`No active run found for task ${taskId}. Log message will not be added.`);
             }
         } else {
             console.warn(`Task ${taskId} not found. Log message will not be added.`);
+        }
+    }
+
+    printAllTasks(): void {
+        console.log("printAllTasks() - override this method to implement task listing");
+    }
+
+    setData(key: string, value: unknown): void {
+        this.storage.setData(key, value);
+    }
+
+    getData<T = unknown>(key: string): T | undefined {
+        return this.storage.getData<T>(key);
+    }
+}
+
+class InMemoryStorage implements DatabaseStorage {
+    private tasks: Map<string, TaskData> = new Map();
+    private data: Map<string, unknown> = new Map();
+
+    getTaskData(taskId: string): TaskData | undefined {
+        return this.tasks.get(taskId);
+    }
+
+    setTaskData(taskId: string, data: TaskData): void {
+        this.tasks.set(taskId, data);
+    }
+
+    getData<T = unknown>(key: string): T | undefined {
+        return this.data.get(key) as T | undefined;
+    }
+
+    setData(key: string, value: unknown): void {
+        this.data.set(key, value);
+    }
+
+    getAllTaskIds(): string[] {
+        return Array.from(this.tasks.keys());
+    }
+}
+
+// In-memory database for dev
+export class InMemoryDatabase extends BaseDatabase {
+    protected storage: DatabaseStorage;
+    private inMemoryStorage: InMemoryStorage;
+
+    constructor() {
+        super();
+        this.inMemoryStorage = new InMemoryStorage();
+        this.storage = this.inMemoryStorage;
+    }
+
+    override printAllTasks(): void {
+        console.log("Current Database State:");
+        const taskIds = this.inMemoryStorage.getAllTaskIds();
+        for (const taskId of taskIds) {
+            const taskData = this.storage.getTaskData(taskId);
+            if (taskData) {
+                console.log(`  Task ID: ${taskId}`);
+                console.log(`    Status: ${taskData.status}`);
+                console.log("    Runs:");
+                for (const [index, run] of taskData.runs.entries()) {
+                    console.log(`      Run ${index + 1}: ${run.id}`);
+                    console.log(`        Start Time: ${new Date(run.startTime).toISOString()}`);
+                    if (run.endTime) {
+                        console.log(`        End Time: ${new Date(run.endTime).toISOString()}`);
+                    }
+                    console.log("        Logs:");
+                    for (const log of run.taskLog) {
+                        console.log(
+                            `          - ${new Date(log.timestamp).toISOString()} [${log.type}]: ${log.message}`,
+                        );
+                    }
+                }
+            }
         }
     }
 }
